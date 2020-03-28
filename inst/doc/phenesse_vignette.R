@@ -1,4 +1,4 @@
-## ----setup, include = FALSE, cache = FALSE------------------------------------
+## ----setup, include = FALSE, cache = FALSE, warning=FALSE---------------------
 knitr::opts_chunk$set(
   cache = FALSE,
   collapse = TRUE,

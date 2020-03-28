@@ -5,7 +5,7 @@
 \title{Calculating a percentile estimate of a seasonal abundance distribution from
 incidental observations.}
 \usage{
-weib_percentile(observations, percentile = 0.9, iterations = 500)
+weib_percentile(observations, percentile, iterations = 500)
 }
 \arguments{
 \item{observations}{is a vector of dates/time of observations
@@ -38,10 +38,12 @@ a_syriaca <- subset(inat_examples, scientific_name == "Asclepias syriaca")
 weib_percentile(a_syriaca$doy, percentile = 0.5, iterations = 10)
 
 # Estimate when 90 percent of individuals of the milkweed species A. syriaca
-# have been observed, using only 100 iterations for quicker processing
+# have been observed, using only 10 iterations for quicker processing. To get
+# more stable result, more observations should be used.
 
 weib_percentile(a_syriaca$doy, percentile = 0.5, iterations = 10)
 }
+
 }
 \keyword{percentile}
 \keyword{phenology}

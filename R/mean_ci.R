@@ -5,8 +5,6 @@
 #' \code{mean_ci}Function estimates CIs using nonparametric bootstrapping around a
 #' mean estimate.
 #'
-#' @inheritParams boot::boot.ci
-#'
 #' @param observations A vector of observations given as numeric values
 #'
 #' @param bootstraps The number of bootstraps you want to run to create the CIs,
@@ -26,14 +24,14 @@
 #' @examples
 #' # Estimate when the mean observation of Rudbeckia hirta for the year 2019 up
 #' # to October
-#'
+#' data(inat_examples)
 #' r_hirta <- subset(inat_examples, scientific_name == "Rudbeckia hirta")
 #' mean_ci(observations = r_hirta$doy , bootstraps = 100)
 #'
 #' # note low number of bootstraps for quick processing speed
 #'
 #' @describeIn mean_ci Estimates CIs around a mean percentile estimate using
-#' non-parameteric bootstrapping from the boot package
+#' non-parametric bootstrapping from the boot package
 #' @export
 mean_ci <- function(observations, bootstraps = 100000,
                     conf = 0.95, type = 'bca'){
@@ -43,29 +41,6 @@ mean_ci <- function(observations, bootstraps = 100000,
     return(mean(d))
   }
 
-  estimate_ci <- function(observations){
-    bootstrap <- boot::boot(observations, meanfun, R = bootstraps)
-    boot_ci <- tryCatch(boot::boot.ci(bootstrap, conf = 0.95, type = type),
-                        error = function(e) NA)
-    if(type == "bca"){
-      low_ci <- boot_ci$bca[4]
-      high_ci <- boot_ci$bca[5]
-    } else if(type == "perc"){
-      low_ci <-boot_ci$percent[4]
-      high_ci <- boot_ci$percent[5]
-    } else if(type == "norm"){
-      low_ci <- boot_ci$normal[4]
-      high_ci <- boot_ci$normal[5]
-    } else if(type == "basic"){
-      low_ci <- boot_ci$basic[4]
-      high_ci <- boot_ci$basic[5]
-    } else{
-      low_ci <- "Bootstrap type NA"
-      high_ci <- "Bootstrap type NA"
-    }
-    ci_df <- data.frame(estimate = bootstrap$t0, low_ci, high_ci)
-    return(ci_df)
-  }
-  estimate <- estimate_ci(observations)
-  return(estimate)
+  phenesse::estimate_ci(observations, .f = meanfun, n_boots = bootstraps,
+              conf = conf, type = type)
 }
