@@ -18,9 +18,9 @@
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css" data-origin="pandoc">
-a.sourceLine { display: inline-block; line-height: 1.25; }
-a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
-a.sourceLine:empty { height: 1.2em; }
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode { white-space: pre; position: relative; }
 div.sourceCode { margin: 1em 0; }
@@ -30,14 +30,16 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 code.sourceCode { white-space: pre-wrap; }
-a.sourceLine { text-indent: -1em; padding-left: 1em; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
-pre.numberSource a.sourceLine
-  { position: relative; left: -4em; }
-pre.numberSource a.sourceLine::before
-  { content: attr(title);
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
     position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; pointer-events: all; display: inline-block;
+    border: none; display: inline-block;
     -webkit-touch-callout: none; -webkit-user-select: none;
     -khtml-user-select: none; -moz-user-select: none;
     -ms-user-select: none; user-select: none;
@@ -46,9 +48,9 @@ pre.numberSource a.sourceLine::before
   }
 pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
 div.sourceCode
-  {  }
+  {   }
 @media screen {
-a.sourceLine::before { text-decoration: underline; }
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 code span.al { color: #ff0000; font-weight: bold; } /* Alert */
 code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
@@ -304,74 +306,96 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <ul>
 <li><a href="#overview">Overview</a></li>
 <li><a href="#loading-example-data">Loading example data</a></li>
-<li><a href="#use-the-weibull-corrected-estimates-for-any-percentile-of-a-distribution.">Use the Weibull-corrected estimates for any percentile of a distribution.</a></li>
+<li><a href="#the-main-function-of-phenesse-weib_percentile">The main function of ‘phenesse’: weib_percentile</a><ul>
+<li><a href="#weib_percentile-calculates-a-weibull-parameterized-estimate-of-phenology-for-any-percentile-of-a-distribution">weib_percentile calculates a Weibull-parameterized estimate of phenology for any percentile of a distribution</a></li>
+</ul></li>
 <li><a href="#use-non-parametric-bootstrapping-to-calculate-confidence-interval-of-estimate">Use non-parametric bootstrapping to calculate confidence interval of estimate</a><ul>
 <li><a href="#caution-calculating-confidence-interval-of-weibull-corrected-estimates-are-computationally-expensive.-consider-options-to-parallelize-calculations">CAUTION: Calculating confidence interval of Weibull-corrected estimates are computationally expensive. Consider options to parallelize calculations</a></li>
+<li><a href="#options-to-parallelize-weib_percentile_ci">Options to parallelize weib_percentile_ci</a></li>
 </ul></li>
-<li><a href="#use-functions-to-calculate-confidence-interval-of-quantile-function-and-mean-estimates">Use functions to calculate confidence interval of quantile function and mean estimates</a></li>
+<li><a href="#cis-for-mean-and-quantile-estimates">CIs for mean and quantile estimates</a><ul>
+<li><a href="#another-functionality-of-phenesse-is-it-provides-functions-to-calculate-confidence-intervals-of-quantile-and-mean-estimates-using-non-parametric-bootstrapping">Another functionality of phenesse, is it provides functions to calculate confidence intervals of quantile and mean estimates using non-parametric bootstrapping</a></li>
+</ul></li>
 </ul>
 </div>
 
 <p><strong>Contact Information:</strong> Michael W. Belitz (<a href="mailto:mbelitz@ufl.edu" class="email">mbelitz@ufl.edu</a>)</p>
 <div id="overview" class="section level1">
 <h1>Overview</h1>
-<p>The R package ‘phenesse’ provides functions to calculate phenological estimates for multiple phenological metrics. It can be especially useful when estimating the onset or offset of a phenological event using presence-only data.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">library</span>(phenesse)</a></code></pre></div>
+<p>The R package ‘phenesse’ provides functions to calculate Weibull-parameterized estimates of phenology for any percentile of a distribution (except 0 and 100). The algorithm of the estimator is described in Belitz et al (2020) <a href="https://doi.org/10.1111/2041-210X.13448" class="uri">https://doi.org/10.1111/2041-210X.13448</a>. This publication also describes the results of detailed simulations and empirical examples documenting the efficacy of the estimator and other commonly used phenology estimators. We found the Weibull-parameterized estimator to be especially useful when estimating the onset or offset of phenology events using presence-only data.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">library</span>(phenesse)</span></code></pre></div>
 </div>
 <div id="loading-example-data" class="section level1">
 <h1>Loading example data</h1>
 <p>We provide example incidental observations from iNaturalist for four species and a small extent of the United States. These data are for the year 2019 up until mid October and are not scored by phenological phases. The four species are Speyeria cybele, Danaus plexippus, Rudbeckia hirta, and Asclepias syriaca.</p>
 <p>example iNaturalist data:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1">inat_examples &lt;-<span class="st"> </span>inat_examples</a></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>inat_examples &lt;-<span class="st"> </span>inat_examples</span></code></pre></div>
 </div>
-<div id="use-the-weibull-corrected-estimates-for-any-percentile-of-a-distribution." class="section level1">
-<h1>Use the Weibull-corrected estimates for any percentile of a distribution.</h1>
-<p>Estimate the onset, 10% and 50% of when Speyeria cybele has been observed in 2019 across the entire extent.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" title="1">s_cybele &lt;-<span class="st"> </span><span class="kw">subset</span>(inat_examples, scientific_name <span class="op">==</span><span class="st"> &quot;Speyeria cybele&quot;</span>)</a>
-<a class="sourceLine" id="cb3-2" title="2"></a>
-<a class="sourceLine" id="cb3-3" title="3"><span class="co"># calculate onset, note iterations are much lower than desired for quick </span></a>
-<a class="sourceLine" id="cb3-4" title="4"><span class="co"># vignette knit. Increase interations for robust calculations</span></a>
-<a class="sourceLine" id="cb3-5" title="5"><span class="kw">weib_percentile</span>(<span class="dt">observations =</span> s_cybele<span class="op">$</span>doy, <span class="dt">percentile =</span> <span class="dv">0</span>, <span class="dt">iterations =</span> <span class="dv">20</span>)</a>
-<a class="sourceLine" id="cb3-6" title="6"><span class="co">#&gt; [1] 110.1495</span></a>
-<a class="sourceLine" id="cb3-7" title="7"><span class="co">#calculate 1st percentile</span></a>
-<a class="sourceLine" id="cb3-8" title="8"><span class="kw">weib_percentile</span>(<span class="dt">observations =</span> s_cybele<span class="op">$</span>doy, <span class="dt">percentile =</span> <span class="fl">0.1</span>, <span class="dt">iterations =</span> <span class="dv">20</span>)</a>
-<a class="sourceLine" id="cb3-9" title="9"><span class="co">#&gt; [1] 155.4506</span></a>
-<a class="sourceLine" id="cb3-10" title="10"><span class="co">#calculate 50th percentile</span></a>
-<a class="sourceLine" id="cb3-11" title="11"><span class="kw">weib_percentile</span>(<span class="dt">observations =</span> s_cybele<span class="op">$</span>doy, <span class="dt">percentile =</span> <span class="fl">0.5</span>, <span class="dt">iterations =</span> <span class="dv">20</span>)</a>
-<a class="sourceLine" id="cb3-12" title="12"><span class="co">#&gt; [1] 194.3791</span></a></code></pre></div>
+<div id="the-main-function-of-phenesse-weib_percentile" class="section level1">
+<h1>The main function of ‘phenesse’: weib_percentile</h1>
+<div id="weib_percentile-calculates-a-weibull-parameterized-estimate-of-phenology-for-any-percentile-of-a-distribution" class="section level2">
+<h2>weib_percentile calculates a Weibull-parameterized estimate of phenology for any percentile of a distribution</h2>
+<p>Estimate the onset (0.01%), 10% and 50% of when Speyeria cybele has been observed in 2019 across the entire extent. We recommend at least 250 iterations are run to get a stable estimate. The default number of iterations is 500.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a>s_cybele &lt;-<span class="st"> </span><span class="kw">subset</span>(inat_examples, scientific_name <span class="op">==</span><span class="st"> &quot;Speyeria cybele&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2"></a></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="co"># calculate onset</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a><span class="kw">weib_percentile</span>(<span class="dt">observations =</span> s_cybele<span class="op">$</span>doy, <span class="dt">percentile =</span> <span class="fl">0.01</span>, <span class="dt">iterations =</span> <span class="dv">250</span>) </span>
+<span id="cb3-5"><a href="#cb3-5"></a><span class="co">#&gt; [1] 112.2427</span></span>
+<span id="cb3-6"><a href="#cb3-6"></a><span class="co"># note that the Weibull distribution does not estimate true 0th and 100th percentiles. Therefore the user must choose a percentile (quantile) between 0 and 1. </span></span>
+<span id="cb3-7"><a href="#cb3-7"></a></span>
+<span id="cb3-8"><a href="#cb3-8"></a><span class="co">#calculate 10th percentile</span></span>
+<span id="cb3-9"><a href="#cb3-9"></a><span class="kw">weib_percentile</span>(<span class="dt">observations =</span> s_cybele<span class="op">$</span>doy, <span class="dt">percentile =</span> <span class="fl">0.1</span>, <span class="dt">iterations =</span> <span class="dv">250</span>)</span>
+<span id="cb3-10"><a href="#cb3-10"></a><span class="co">#&gt; [1] 152.2048</span></span>
+<span id="cb3-11"><a href="#cb3-11"></a></span>
+<span id="cb3-12"><a href="#cb3-12"></a><span class="co">#calculate 50th percentile</span></span>
+<span id="cb3-13"><a href="#cb3-13"></a><span class="kw">weib_percentile</span>(<span class="dt">observations =</span> s_cybele<span class="op">$</span>doy, <span class="dt">percentile =</span> <span class="fl">0.5</span>) </span>
+<span id="cb3-14"><a href="#cb3-14"></a><span class="co">#&gt; [1] 194.284</span></span></code></pre></div>
+</div>
 </div>
 <div id="use-non-parametric-bootstrapping-to-calculate-confidence-interval-of-estimate" class="section level1">
 <h1>Use non-parametric bootstrapping to calculate confidence interval of estimate</h1>
 <div id="caution-calculating-confidence-interval-of-weibull-corrected-estimates-are-computationally-expensive.-consider-options-to-parallelize-calculations" class="section level2">
 <h2>CAUTION: Calculating confidence interval of Weibull-corrected estimates are computationally expensive. Consider options to parallelize calculations</h2>
-<p>Estimate the 50% of when Speyeria cybele were observed in 2019 and calculate CI</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1">s_cybele &lt;-<span class="st"> </span><span class="kw">subset</span>(inat_examples, scientific_name <span class="op">==</span><span class="st"> &quot;Speyeria cybele&quot;</span>)</a>
-<a class="sourceLine" id="cb4-2" title="2"></a>
-<a class="sourceLine" id="cb4-3" title="3"><span class="co"># calculate onset - note ignoring for vignette test</span></a>
-<a class="sourceLine" id="cb4-4" title="4"><span class="co">#weib_percentile_ci(observations = s_cybele$doy, iterations = 50,</span></a>
-<a class="sourceLine" id="cb4-5" title="5"><span class="co"># percentile = 0.5, bootstraps = 50)</span></a>
-<a class="sourceLine" id="cb4-6" title="6"><span class="co"># note warnings of extreme order points used as endpoints is due to the </span></a>
-<a class="sourceLine" id="cb4-7" title="7"><span class="co"># low number of bootsraps used. Please use higher number of bootstraps if </span></a>
-<a class="sourceLine" id="cb4-8" title="8"><span class="co"># using for analyses.</span></a></code></pre></div>
+<p>Estimate the beginning of when Speyeria cybele were observed in 2019 and calculate CI</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>s_cybele &lt;-<span class="st"> </span><span class="kw">subset</span>(inat_examples, scientific_name <span class="op">==</span><span class="st"> &quot;Speyeria cybele&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2"></a></span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="co"># calculate onset, we&#39;re using very low iterations and bootstraps to knit vignette quickly. Please increase both iterations and bootstraps if using for analyses</span></span>
+<span id="cb4-4"><a href="#cb4-4"></a><span class="kw">weib_percentile_ci</span>(<span class="dt">observations =</span> s_cybele<span class="op">$</span>doy, <span class="dt">iterations =</span> <span class="dv">10</span>,</span>
+<span id="cb4-5"><a href="#cb4-5"></a> <span class="dt">percentile =</span> <span class="fl">0.01</span>, <span class="dt">bootstraps =</span> <span class="dv">100</span>)</span>
+<span id="cb4-6"><a href="#cb4-6"></a><span class="co">#&gt;   estimate   low_ci  high_ci</span></span>
+<span id="cb4-7"><a href="#cb4-7"></a><span class="co">#&gt; 1 107.8024 93.12318 140.6371</span></span>
+<span id="cb4-8"><a href="#cb4-8"></a><span class="co"># note warning that extreme order statistics used as endpoints. Increase number of bootstraps to avoid this warning.</span></span></code></pre></div>
+</div>
+<div id="options-to-parallelize-weib_percentile_ci" class="section level2">
+<h2>Options to parallelize weib_percentile_ci</h2>
+<p>There is a built in option to run the bootstraps in parallel. To do so, change the parameter “parallelize” to either “multicore” or “snow” and choose the number of processes to be used in parallel operation (ncpus).</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="co"># parallelize the above calculation using multicore parallelization and 4 cores. </span></span>
+<span id="cb5-2"><a href="#cb5-2"></a><span class="co"># weib_percentile_ci(observations = s_cybele$doy, iterations = 10,</span></span>
+<span id="cb5-3"><a href="#cb5-3"></a><span class="co">#                    percentile = 0.01, bootstraps = 100, </span></span>
+<span id="cb5-4"><a href="#cb5-4"></a><span class="co">#                   parallelize = &quot;multicore&quot;, ncpus = 4)</span></span>
+<span id="cb5-5"><a href="#cb5-5"></a><span class="co"># not run because having multiple cores in running in vignette gives check_rhub warnings</span></span></code></pre></div>
+<p>Another option I have found useful when running many confidence interval calculations is to make a list of the observations that you want to estimate the CIs of and use mclapply (multiple core lapply) to estimate apply a function containing the weib_percentile_ci over a list using multiple cores. I often find this to be faster than using the built-in parallelization when estimating many weib_percentile_ci estimates and using 40 cores.</p>
 </div>
 </div>
-<div id="use-functions-to-calculate-confidence-interval-of-quantile-function-and-mean-estimates" class="section level1">
-<h1>Use functions to calculate confidence interval of quantile function and mean estimates</h1>
+<div id="cis-for-mean-and-quantile-estimates" class="section level1">
+<h1>CIs for mean and quantile estimates</h1>
+<div id="another-functionality-of-phenesse-is-it-provides-functions-to-calculate-confidence-intervals-of-quantile-and-mean-estimates-using-non-parametric-bootstrapping" class="section level2">
+<h2>Another functionality of phenesse, is it provides functions to calculate confidence intervals of quantile and mean estimates using non-parametric bootstrapping</h2>
 <p>Estimate the 10% and 50% phenometrics and confidence intervals for a quantile estimate of Rudbeckia hirta.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1">r_hirta &lt;-<span class="st"> </span><span class="kw">subset</span>(inat_examples, scientific_name <span class="op">==</span><span class="st"> &quot;Rudbeckia hirta&quot;</span>)</a>
-<a class="sourceLine" id="cb5-2" title="2"></a>
-<a class="sourceLine" id="cb5-3" title="3"><span class="co"># calculate 50% quantile and CIs</span></a>
-<a class="sourceLine" id="cb5-4" title="4"><span class="kw">quantile_ci</span>(<span class="dt">observations =</span> r_hirta<span class="op">$</span>doy, <span class="dt">percentile =</span> <span class="fl">0.5</span>, <span class="dt">bootstraps =</span> <span class="dv">100</span>)</a>
-<a class="sourceLine" id="cb5-5" title="5"><span class="co">#&gt; Warning in norm.inter(t, adj.alpha): extreme order statistics used as endpoints</span></a>
-<a class="sourceLine" id="cb5-6" title="6"><span class="co">#&gt;     estimate low_ci high_ci</span></a>
-<a class="sourceLine" id="cb5-7" title="7"><span class="co">#&gt; 50%    185.5    173     193</span></a></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>r_hirta &lt;-<span class="st"> </span><span class="kw">subset</span>(inat_examples, scientific_name <span class="op">==</span><span class="st"> &quot;Rudbeckia hirta&quot;</span>)</span>
+<span id="cb6-2"><a href="#cb6-2"></a></span>
+<span id="cb6-3"><a href="#cb6-3"></a><span class="co"># calculate 50% quantile and CIs</span></span>
+<span id="cb6-4"><a href="#cb6-4"></a><span class="kw">quantile_ci</span>(<span class="dt">observations =</span> r_hirta<span class="op">$</span>doy, <span class="dt">percentile =</span> <span class="fl">0.5</span>)</span>
+<span id="cb6-5"><a href="#cb6-5"></a><span class="co">#&gt;     estimate low_ci high_ci</span></span>
+<span id="cb6-6"><a href="#cb6-6"></a><span class="co">#&gt; 50%    185.5    175   198.5</span></span></code></pre></div>
 <p>Calculate the mean estimate and confidence intervals of the estimate of Rudbeckia hirta.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1">r_hirta &lt;-<span class="st"> </span><span class="kw">subset</span>(inat_examples, scientific_name <span class="op">==</span><span class="st"> &quot;Rudbeckia hirta&quot;</span>)</a>
-<a class="sourceLine" id="cb6-2" title="2"></a>
-<a class="sourceLine" id="cb6-3" title="3"><span class="co"># calculate 50% quantile and CIs</span></a>
-<a class="sourceLine" id="cb6-4" title="4"><span class="kw">mean_ci</span>(<span class="dt">observations =</span> r_hirta<span class="op">$</span>doy, <span class="dt">bootstraps =</span> <span class="dv">100</span>)</a>
-<a class="sourceLine" id="cb6-5" title="5"><span class="co">#&gt;   estimate   low_ci  high_ci</span></a>
-<a class="sourceLine" id="cb6-6" title="6"><span class="co">#&gt; 1 192.7222 181.4182 203.6193</span></a></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>r_hirta &lt;-<span class="st"> </span><span class="kw">subset</span>(inat_examples, scientific_name <span class="op">==</span><span class="st"> &quot;Rudbeckia hirta&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2"></a></span>
+<span id="cb7-3"><a href="#cb7-3"></a><span class="co"># calculate mean and CIs</span></span>
+<span id="cb7-4"><a href="#cb7-4"></a><span class="kw">mean_ci</span>(<span class="dt">observations =</span> r_hirta<span class="op">$</span>doy)</span>
+<span id="cb7-5"><a href="#cb7-5"></a><span class="co">#&gt;   estimate   low_ci  high_ci</span></span>
+<span id="cb7-6"><a href="#cb7-6"></a><span class="co">#&gt; 1 192.7222 181.1667 204.6667</span></span></code></pre></div>
+</div>
 </div>
 
 
